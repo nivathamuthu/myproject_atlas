@@ -1,0 +1,68 @@
+services:
+  app:
+    build: .
+    container_name: atlas-app
+    ports:
+      - "8000:8000"
+    env_file:
+      - .env
+    environment:
+      POSTGRES_HOST: postgres
+      POSTGRES_PORT: "5432"
+      DATABASE_URL: postgresql+asyncpg://postgres:root@postgres:5432/atlas_db
+      MINIO_ENDPOINT: minio:9000
+      CLAMAV_HOST: clamav
+      CLAMAV_PORT: "3310"
+    depends_on:
+      - postgres
+      - minio
+      - clamav
+
+  postgres:
+    image: postgres:18
+    container_name: atlas-postgres
+    ports:
+      - "5433:5432"
+    environment:
+      POSTGRES_DB: atlas_db
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: root
+    volumes:
+      - postgres_data:/var/lib/postgresql
+
+  minio:
+    image: minio/minio:latest
+    container_name: atlas-minio
+    ports:
+      - "9000:9000"
+      - "9001:9001"
+    environment:
+      MINIO_ROOT_USER: minioadmin
+      MINIO_ROOT_PASSWORD: minioadmin
+    volumes:
+      - minio_data:/data
+    command: server /data --console-address ":9001"
+
+  clamav:
+    image: clamav/clamav:latest
+    container_name: atlas-clamav
+    ports:
+      - "3310:3310"
+    volumes:
+      - clamav_data:/var/lib/clamav
+
+  web:
+    build:
+      context: ./atlas-web
+    container_name: atlas-web
+    ports:
+      - "3000:3000"
+    environment:
+      NEXT_PUBLIC_API_BASE_URL: http://localhost:8000
+    depends_on:
+      - app
+
+volumes:
+  postgres_data:
+  minio_data:
+  clamav_data:
